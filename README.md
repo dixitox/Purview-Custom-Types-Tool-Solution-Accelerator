@@ -8,11 +8,16 @@ products:
 ![Microsoft Purview Custom Types Tool](./public/assets/images/repo-header.png)
 
 # Microsoft Purview Custom Types Tool
+
+> **Note:** This repository is based on the official [Microsoft Purview Custom Types Tool Solution Accelerator](https://github.com/microsoft/Purview-Custom-Types-Tool-Solution-Accelerator) with additional enhancements for editing type definitions and improved error handling.
+
 The Purview Custom Types Tool is a solution accelerator for supporting custom connectors in [Microsoft Purview](https://azure.microsoft.com/en-us/services/purview/), which is a unified data governance service that helps you manage and govern your on-premises, multicloud, and software-as-a-service (SaaS) data.
 
 This application supports the following actions:
 - Browse existing type definitions
 - Create new entity & relationship type definitions
+- **Edit existing custom type definitions** (update attributes, descriptions, and options)
+- Delete custom type definitions with enhanced error reporting
 - Create entity templates to simplify source scanning
 
 When combined with the [Purview Custom Connector Solution Accelerator](https://github.com/microsoft/Purview-Custom-Connector-Solution-Accelerator), this application provides entity templates to help create source scanning functionality. The diagram below outlines the typical journey to develop a custom connector for Microsoft Purview:
@@ -44,8 +49,10 @@ This application can be deployed in various ways to meet your needs. Because the
     * Update `AadTenantId` with your Tenant ID for Azure Active Directory
     * Update `AppClientId` and `AppClientSecret` with your application service principal
     * Update `AtlasAccountName` with your Microsoft Purview account name
-    * Update `StorageConnectionString` with your connection string for Azure Data Lake Storage
-    * Update `StorageContainer` with your preferred container name
+    * **Optional (for template creation only):** Update `StorageConnectionString` with your connection string for Azure Data Lake Storage
+    * **Optional (for template creation only):** Update `StorageContainer` with your preferred container name
+    
+    > **Note:** Storage configuration is only required if you want to use the "Create Template" feature. The core functionality of browsing, creating, editing, and deleting type definitions works without storage configuration.
 1. Install the application's dependencies:
    ```bash
    npm install
@@ -66,6 +73,40 @@ This application can be deployed in various ways to meet your needs. Because the
     npm start
     ```
     App now running at [http://localhost:3000/](http://localhost:3000/). Note the `package.json` file has a proxy for port 7071 so you can code directly to the `/api` path on localhost. For more information on the local Azure Functions, see the [API README](./api/).
+
+## Using the Application
+
+### Browsing Type Definitions
+- Navigate through service types to view existing entity and relationship type definitions
+- View details including attributes, relationships, super types, sub types, and advanced options
+
+### Creating Type Definitions
+1. Select a service type or create a new one
+2. Click the "New Type Definition" button
+3. Fill in the required fields (category, name, super type, attributes, etc.)
+4. Click "SAVE TO AZURE" to create the new type
+
+### Editing Type Definitions
+1. Navigate to an existing custom type definition (note: system types created by 'admin' or 'ServiceAdmin' cannot be edited)
+2. Click the "Edit Type" button
+3. Modify the attributes, description, or options as needed
+4. Click "UPDATE IN AZURE" to save changes
+
+> **Note:** Type names are immutable identifiers in Purview. When editing, the type name (encoded) remains read-only, but you can update the display name/description and all other properties.
+
+### Deleting Type Definitions
+1. Navigate to a custom type definition
+2. Click the "Delete" button
+3. Review the warning dialog (which indicates if the type has relationships or sub-types)
+4. Confirm deletion
+
+> **Important:** Types referenced by other types or relationships cannot be deleted. The application will provide detailed error messages explaining why deletion failed and what needs to be removed first.
+
+### Creating Templates (Optional)
+For entity types, you can create JSON templates for use with custom connectors:
+1. View an entity type definition
+2. Click "Create Template"
+3. The template is saved to Azure Storage (requires storage configuration)
 
 ## Deploy to Azure
 Please review the [deployment documentation](./DEPLOY.md) for details. Due to the two methods of [API support in Azure Static Web Apps with Azure Functions](https://docs.microsoft.com/en-us/azure/static-web-apps/apis), you will need to deploy a separate Azure Function for the `/api/AadToken` endpoint.

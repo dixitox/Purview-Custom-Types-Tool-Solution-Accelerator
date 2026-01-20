@@ -53,8 +53,9 @@ module.exports = async function (context, req) {
         break;
 
       case "POST":
+      case "PUT":
         if (reqBody) {
-          const result = await purviewHelper.postTypeDefs(token, reqBody),
+          const result = await purviewHelper.postTypeDefs(token, reqBody, req.method),
                 resultErrorCode = (result && result.errorCode) || null,
                 resultErrorMessage = (result && result.errorMessage) || null;
 
@@ -112,6 +113,4 @@ module.exports = async function (context, req) {
       },
       headers: { "content-type" : "application/json" }
   };
-
-  context.done();
 }

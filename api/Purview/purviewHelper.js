@@ -204,11 +204,11 @@ async function getTypeDefByGuid(token, guid) {
   return result;
 }
 
-// POST Type Defs
-async function postTypeDefs(token, typedefs) {
+// POST/PUT Type Defs
+async function postTypeDefs(token, typedefs, method = 'POST') {
   const apiUrl        = (token && `${apiPrefix}/atlas/v2/types/typedefs`) || null,
         fetchOptions  = typedefs && {
-                          method:  'POST',
+                          method:  method,
                           body:    JSON.stringify(typedefs),
                           headers: {
                             'Content-Type':'application/json',
@@ -255,9 +255,20 @@ async function deleteTypeDefByGuid(token, guid, category) {
   if (fetchResponse) {
     const fetchStatus     = fetchResponse.status || 500,
           fetchStatusText = fetchResponse.statusText || "Internal error";
+    
+    // Try to parse error details from response body
+    let errorDetails = null;
+    try {
+      const responseJson = await fetchResponse.json();
+      errorDetails = responseJson;
+    } catch (e) {
+      // Response might not be JSON
+    }
+    
     result = {
       status: fetchStatus,
-      statusText: fetchStatusText
+      statusText: fetchStatusText,
+      errorDetails: errorDetails
     }
   }
   else {

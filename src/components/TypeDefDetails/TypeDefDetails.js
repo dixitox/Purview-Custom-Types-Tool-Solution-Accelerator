@@ -50,6 +50,7 @@ export default function TypeDefDetails(props) {
 
         // Icons
         iconClone         = { iconName: 'Copy' },
+        iconEdit          = { iconName: 'Edit' },
 
         TypeDefIcon = () => (isRelationship)
           ? <Icon iconName="Relationship" className="servicetype_header_icon" />
@@ -67,11 +68,19 @@ export default function TypeDefDetails(props) {
         [isDeleting, setIsDeleting] = useState(defaultDelState),
         [deleteMsg,  setDeleteMsg]  = useState(defaultDelMsg),
         [hideDialog, { toggle: toggleHideDialog }] = useBoolean(true),
+        
+        // Check if type has relationship references
+        hasRelationships            = (isEntity && relAttrDefs && relAttrDefs.length > 0) || false,
+        hasSubTypes                 = (isEntity && subTypes && subTypes.length > 0) || false,
+        hasReferences               = hasRelationships || hasSubTypes,
+        
         dialogContentProps = {
                               type: DialogType.normal,
                               title: 'Delete Type Definition?',
                               closeButtonAriaLabel: 'Close',
-                              subText: 'Are you sure you want to delete this?'
+                              subText: hasReferences 
+                                ? `Warning: This type ${hasRelationships ? 'has relationship attributes' : ''}${hasRelationships && hasSubTypes ? ' and ' : ''}${hasSubTypes ? 'has sub-types' : ''}. Deletion may fail if these are still in use. Are you sure you want to continue?`
+                                : 'Are you sure you want to delete this type definition? This action cannot be undone.'
                             },
         modalProps        = {
                               isBlocking: false,
@@ -181,6 +190,16 @@ export default function TypeDefDetails(props) {
     }
   }
 
+  // Handle clicking edit
+  const handleEditClick = (typeDef, e) => {
+    e.preventDefault();
+    if (typeDef) {
+      // Pass the typeDef without the '_copy' suffix for editing
+      updateServiceView('edit', typeDef);
+      window.scrollTo(0,0);
+    }
+  }
+
   // Handle clicking typedef
   /*
   const handleTypeDefClick = (typeDef, e) => {
@@ -229,13 +248,47 @@ export default function TypeDefDetails(props) {
           }
           // API responsed with errors
           else {
-            setDeleteMsg('Error, check logs');
+            console.error('Delete failed:', json);
+            console.error('Full error response:', JSON.stringify(json, null, 2));
+            
+            // Extract detailed error information
+            let errorMessage = 'Cannot delete this type';
+            const errorDetails = json && json.data && json.data.errorDetails;
+            const statusText = json && json.data && json.data.statusText;
+            
+            // First try to get the actual Purview error message
+            if (errorDetails) {
+              const purviewError = errorDetails.errorMessage || errorDetails.message || errorDetails.error;
+              
+              if (purviewError) {
+                // Use the actual Purview error message
+                errorMessage = purviewError;
+                
+                // Add helpful context for common errors
+                if (purviewError.includes('references') || purviewError.includes('referenced')) {
+                  errorMessage = `Cannot delete: ${purviewError}`;
+                } else if (purviewError.includes('relationship')) {
+                  errorMessage = `Cannot delete: ${purviewError}`;
+                }
+              }
+            } 
+            // Fallback to statusText if no error details
+            else if (statusText && statusText !== 'Internal error') {
+              errorMessage = statusText;
+            }
+            // Try to get error from data string
+            else if (json && json.data && typeof json.data === 'string') {
+              errorMessage = json.data;
+            }
+            
+            console.error('Final error message:', errorMessage);
+            setDeleteMsg(errorMessage);
           }
         })
         // Fetch errors
         .catch(error => {
           console.error("Error:", error);
-          setDeleteMsg('Error, check logs');
+          setDeleteMsg('Network error occurred');
           setIsDeleting(false);
         });
     }
@@ -269,6 +322,14 @@ export default function TypeDefDetails(props) {
       </div>
       <div className="typedef">
         {msgStorage}
+        {(isEntity || isRelationship) && !createdByAdmin
+            ? <ActionButton
+                iconProps={iconEdit}
+                onClick={(e) => handleEditClick(typeDef, e)}
+                allowDisabledFocus disabled={false} checked={false}
+              >Edit Type</ActionButton>
+            : null
+        }
         {(isEntity || isRelationship)
             ? <ActionButton
                 iconProps={iconClone}

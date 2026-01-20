@@ -52,6 +52,7 @@ export default function TypeDefNew(props) {
 
   // Prop service name
   const propsServiceType       = (props && props.serviceTypeName) || null,
+        propsEditMode          = (props && props.editMode) || false,
         
         // Prop typeDef used for cloning values
         typeDef                = (props && props.typeDef) || null,
@@ -69,6 +70,8 @@ export default function TypeDefNew(props) {
         typeDefOptions         = (typeDef && typeDef.options) || null,
         typeDefEndDef1         = (typeDef && typeDef.endDef1) || null,
         typeDefEndDef2         = (typeDef && typeDef.endDef2) || null,
+        typeDefGuid            = (typeDef && typeDef.guid) || null,
+        typeDefDescription     = (typeDef && typeDef.description) || null,
         
         // Transformed typedef options
         typeDefOptionsArray    = transformTypeDefOptions(typeDefOptions),
@@ -131,9 +134,10 @@ export default function TypeDefNew(props) {
         [formServType,      setFormServType]      = useState((!createdByAdmin && typeDef && typeDef.serviceType) || propsServiceType),
         [formServTypeInput, setFormServTypeInput] = useState(''),
 
-        [formName,     setFormName]         = useState((typeDef && typeDef.name && `${typeDef.name}_copy`) || ''),
-        [formCategory, setCategory]         = useState(typeDefCategory),
-        [attrFields,   setAttrFields]       = useState((typeDefAttributeDefs) ? typeDefAttributeDefs :  [defaultAttribute]),
+        [formName,        setFormName]        = useState((typeDef && typeDef.name && (propsEditMode ? typeDef.name : `${typeDef.name}_copy`)) || ''),
+        [formDescription, setFormDescription] = useState((propsEditMode && typeDefDescription) || (typeDef && typeDef.name && `${typeDef.name}_copy`) || ''),
+        [formCategory, setCategory]           = useState(typeDefCategory),
+        [attrFields,   setAttrFields]         = useState((typeDefAttributeDefs) ? typeDefAttributeDefs :  [defaultAttribute]),
 
         // Entity-specific fields
         [formSuperType,  setFormSuperType]  = useState((typeDefSuperType) ? typeDefSuperType : ''),
@@ -296,7 +300,7 @@ export default function TypeDefNew(props) {
     else if (formServType === "new" && formServTypeInput === "") {
       setMsgPurview(<MessageBar messageBarType={MessageBarType.error}><strong>Purview Error:</strong> New service type name is required</MessageBar>);
     }
-    else if (formName === "") {
+    else if (formDescription === "") {
       setMsgPurview(<MessageBar messageBarType={MessageBarType.error}><strong>Purview Error:</strong> Name field is required</MessageBar>);
     }
     else if (!formCategory ) {
@@ -318,18 +322,25 @@ export default function TypeDefNew(props) {
     // Valid
     else {
       setIsSubmitting(true);
-      setNewTypeDefName(formName);
-      const encodedName  = encodeName(formName),
+      setNewTypeDefName(formDescription);
+      
+      // When editing, use the original encoded name; when creating, encode the new name
+      const encodedName  = propsEditMode ? formName : encodeName(formDescription),
             cleanedAttrs = cleanArray(attrFields);
 
       // Build JSON
       let tempTypeDef = {
             category:      formCategory,
             name:          encodedName,
-            description:   formName,
+            description:   formDescription,
             serviceType:   formServType,
             attributeDefs: cleanedAttrs,
           };
+      
+      // Add guid if editing existing type
+      if (propsEditMode && typeDefGuid) {
+        tempTypeDef.guid = typeDefGuid;
+      }
       
       // Entity-specific
       if (formCategory === 'ENTITY') {
@@ -367,11 +378,11 @@ export default function TypeDefNew(props) {
         };
       }
 
-      // Build JSON for POST
+      // Build JSON for POST/PUT
       let postBody = {};
       postBody[ (formCategory === 'RELATIONSHIP') ? 'relationshipDefs' : 'entityDefs' ] = [tempTypeDef];
       const postTypeDef = {
-              method: "POST",
+              method: propsEditMode ? "PUT" : "POST",
               body: JSON.stringify(postBody),
               headers: {
                 "Content-Type":"application/json",
@@ -380,10 +391,13 @@ export default function TypeDefNew(props) {
             };
 
       let apiUrl = "/api/purview/typedefs";
-      console.log(`### FETCH: POST ${apiUrl}`);
+      console.log(`### FETCH: ${propsEditMode ? 'UPDATE (PUT)' : 'CREATE (POST)'} ${apiUrl}`);
+      console.log('Edit Mode:', propsEditMode);
+      console.log('GUID:', typeDefGuid);
+      console.log('tempTypeDef:', tempTypeDef);
       console.log('postBody:', postBody);
       
-      // POST to Purview API
+      // POST/PUT to Purview API
       await fetch(apiUrl, postTypeDef)
         .then(response => response.json()) 
         .then(json => {
@@ -418,13 +432,14 @@ export default function TypeDefNew(props) {
   // React Hooks: useEffect when newTypeDef changes
   useEffect(() => {
     if (newTypeDef) {
+      const actionText = propsEditMode ? 'Updated' : 'Created new';
       setMsgPurview(
         <MessageBar messageBarType={MessageBarType.success}>
-          <strong>Purview:</strong> Created new type definition {(newTypeDefName) ? `for ${newTypeDefName}` : null}
+          <strong>Purview:</strong> {actionText} type definition {(newTypeDefName) ? `for ${newTypeDefName}` : null}
         </MessageBar>
       );
     }
-  }, [newTypeDef, newTypeDefName]);
+  }, [newTypeDef, newTypeDefName, propsEditMode]);
 
   // React Hooks: useEffect when service type changes
   useEffect(() => {
@@ -455,8 +470,8 @@ export default function TypeDefNew(props) {
     <div>
       {msgPurview}
 
-      <h1 className="title">New Type Definition</h1>
-      {(typeDef)
+      <h1 className="title">{propsEditMode ? 'Edit' : 'New'} Type Definition</h1>
+      {(typeDef && !propsEditMode)
         ? null
         : <><div className="muted"><i>in the &quot;{formServType}&quot; service type</i></div><br /></>
       }
@@ -529,10 +544,23 @@ export default function TypeDefNew(props) {
               />
             </div>
         }
-        <div className="form_group">
-          <Label required>Name</Label>
-          <TextField value={formName} onChange={event => setFormName(event && event.target && event.target.value)} />
-        </div>
+        
+        {propsEditMode
+          ? <>
+              <div className="form_group">
+                <Label>Type Name (read-only)</Label>
+                <TextField value={formName} disabled />
+              </div>
+              <div className="form_group">
+                <Label required>Display Name / Description</Label>
+                <TextField value={formDescription} onChange={event => setFormDescription(event && event.target && event.target.value)} />
+              </div>
+            </>
+          : <div className="form_group">
+              <Label required>Name</Label>
+              <TextField value={formDescription} onChange={event => setFormDescription(event && event.target && event.target.value)} />
+            </div>
+        }
 
         <hr />
 
@@ -650,7 +678,7 @@ export default function TypeDefNew(props) {
         <hr />
 
         <FormSubmit
-          text="SAVE TO AZURE"
+          text={propsEditMode ? "UPDATE IN AZURE" : "SAVE TO AZURE"}
           textLoading="LOADING"
           iconName="CloudUpload"
           disabled={isSubmitting}

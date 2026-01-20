@@ -52,6 +52,10 @@ export default function ServiceType(props) {
     case 'details':
       output = <TypeDefDetails typeDef={typeDef} serviceTypeName={serviceTypeName} updateServiceView={updateServiceView} />;
       break;
+    
+    case 'edit':
+      output  = <TypeDefNew typeDef={typeDef} serviceTypeName={serviceTypeName} editMode={true} />
+      break;
       
     case 'new':
       output  = <TypeDefNew typeDef={typeDef} serviceTypeName={serviceTypeName} />

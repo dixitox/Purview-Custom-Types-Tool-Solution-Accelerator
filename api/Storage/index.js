@@ -13,6 +13,18 @@ module.exports = async function (context, req) {
     let contentBody = '';
     let httpStatus = 400;
 
+    if (!blobServiceClient) {
+        context.res = {
+            status: 500,
+            body: {
+                status: 500,
+                data: { error: 'Storage connection string not configured' }
+            },
+            headers: { "content-type" : "application/json" }
+        };
+        return;
+    }
+
     context.log(`GET all containers looking for '${STORAGE_CONTAINER}'...`);
     let containerExists = false;
     for await (const container of blobServiceClient.listContainers()) {
@@ -45,6 +57,4 @@ module.exports = async function (context, req) {
         },
         headers: { "content-type" : "application/json" }
     };
-
-    context.done();
 }

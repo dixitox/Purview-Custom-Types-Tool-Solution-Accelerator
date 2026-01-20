@@ -76,6 +76,4 @@ module.exports = async function (context, req) {
         },
         headers: { "content-type" : "application/json" }
     };
-
-    context.done();
 }
