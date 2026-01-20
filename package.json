@@ -6,9 +6,10 @@
   "dependencies": {
     "@azure/storage-blob": "^12.11.0",
     "@fluentui/react": "^8.94.3",
+    "ajv": "^8.17.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-scripts": "5.0.1"
+    "react-scripts": "^5.0.1"
   },
   "scripts": {
     "start": "react-scripts start",
