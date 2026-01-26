@@ -7,7 +7,7 @@
     "@azure/storage-blob": "^12.30.0",
     "@fluentui/react": "^8.125.3",
     "ajv": "^8.17.1",
-    "react": "^19.2.3",
+    "react": "^19.2.4",
     "react-dom": "^19.2.3",
     "react-scripts": "5.0.1"
   },
